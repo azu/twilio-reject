@@ -113,6 +113,21 @@ https://<cloudflared-url>/voice
 [Client] ===== CALL ERROR EVENT =====
 [Client] Error code: 31404
 [Client] Error message: NotFound (31404): Not Found
+[Client] Full error: {
+  "message": "NotFound (31404): Not Found",
+  "causes": [
+    "The outbound call was made to an invalid phone number.",
+    "The TwiML application sid is missing a Voice URL."
+  ],
+  "code": 31404,
+  "description": "Not Found (HTTP/SIP)",
+  "explanation": "The server has not found anything matching the request.",
+  "name": "NotFound",
+  "solutions": [
+    "Ensure the phone number dialed is valid.",
+    "Ensure the TwiML application is configured correctly with a Voice URL link."
+  ]
+}
 ```
 
 #### `enableImprovedSignalingErrorPrecision: false` の場合
