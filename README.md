@@ -158,8 +158,6 @@ https://<cloudflared-url>/voice
 
 `enableImprovedSignalingErrorPrecision: false`の場合、元のエラーコード(31404)は`originalError`に含まれ、表面上は汎用的な31005エラーになる。
 
-`<Reject>`は着信コール（incoming call）を応答前に拒否するためのTwiML。発信コール（outgoing call）で使用すると、Twilioサーバー側でエラーとして処理される。
-
 ### `<Say><Hangup>`を返した場合
 
 `<Say><Hangup>`をTwiML App webhookから返した場合、**errorイベントは発火しない**。
@@ -189,9 +187,9 @@ WEBHOOK_MODE=say-hangup npm run dev
 
 ### 結論
 
-`device.connect()`による発信コールでは:
+`device.connect()`による発信コールで`<Reject>`を返した場合:
 
-1. `<Reject>`を返す → **31404 errorイベントが発火する**
-2. `<Say><Hangup>`を返す → errorイベントは発火しない（正常にdisconnect）
+- `enableImprovedSignalingErrorPrecision: true` → **31404 (NotFound)** errorイベントが発火
+- `enableImprovedSignalingErrorPrecision: false` → **31005 (ConnectionError)** errorイベントが発火（`originalError`に31404を保持）
 
-`<Reject>`は着信コール用のTwiMLであり、発信コールでは使用できない。発信コールを終了する場合は`<Hangup>`を使用する。
+`enableImprovedSignalingErrorPrecision`オプションを有効にすると、より詳細なエラーコードを取得できる。
