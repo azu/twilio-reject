@@ -126,7 +126,19 @@ https://<cloudflared-url>/voice
 [Client] ===== CALL ERROR EVENT =====
 [Client] Error code: 31005
 [Client] Error message: ConnectionError (31005): Error sent from gateway in HANGUP
-[Client] originalError: {code: 31404, message: "Not Found"}
+[Client] Full error: {
+  "message": "ConnectionError (31005): Error sent from gateway in HANGUP",
+  "originalError": {
+    "code": 31404,
+    "message": "Not Found"
+  },
+  "causes": [],
+  "code": 31005,
+  "description": "Connection error",
+  "explanation": "A connection error occurred during the call",
+  "name": "ConnectionError",
+  "solutions": []
+}
 ```
 
 `enableImprovedSignalingErrorPrecision: false`の場合、元のエラーコード(31404)は`originalError`に含まれ、表面上は汎用的な31005エラーになる。
