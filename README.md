@@ -93,11 +93,16 @@ https://<cloudflared-url>/voice
 
 ### `<Reject>`を返した場合
 
-`<Reject>`をTwiML App webhookから返した場合、**31404 errorイベントが発火する**。
+`<Reject>`をTwiML App webhookから返した場合、**errorイベントが発火する**。
+
+`enableImprovedSignalingErrorPrecision`オプションによってエラーコードが変わる:
 
 | 設定 | 実際 |
 |------|------|
 | `enableImprovedSignalingErrorPrecision: true` | 31404 (NotFound) errorイベント発火 |
+| `enableImprovedSignalingErrorPrecision: false` | 31005 (ConnectionError) errorイベント発火 |
+
+#### `enableImprovedSignalingErrorPrecision: true` の場合
 
 ```
 [Client] Connecting...
@@ -108,24 +113,25 @@ https://<cloudflared-url>/voice
 [Client] ===== CALL ERROR EVENT =====
 [Client] Error code: 31404
 [Client] Error message: NotFound (31404): Not Found
-[Client] [ERROR] Full error: {
-  "message": "NotFound (31404): Not Found",
-  "causes": [
-    "The outbound call was made to an invalid phone number.",
-    "The TwiML application sid is missing a Voice URL."
-  ],
-  "code": 31404,
-  "description": "Not Found (HTTP/SIP)",
-  "explanation": "The server has not found anything matching the request.",
-  "name": "NotFound",
-  "solutions": [
-    "Ensure the phone number dialed is valid.",
-    "Ensure the TwiML application is configured correctly with a Voice URL link."
-  ]
-}
 ```
 
-`<Reject>`は着信コール（incoming call）を応答前に拒否するためのTwiML。発信コール（outgoing call）で使用すると、Twilioサーバー側でエラーとして処理され、31404エラーが返される。
+#### `enableImprovedSignalingErrorPrecision: false` の場合
+
+```
+[Client] Connecting...
+[Client] [TwilioVoice] WSTransport Received: ringing {callsid: "CAxxxxxxxx"}
+[Server] [Voice Webhook] Received request: {from: "client:test-user-xxx", callSid: "CAxxxxxxxx"}
+[Server] [Voice Webhook] Returning TwiML: <Response><Reject reason="rejected"/></Response>
+[Client] [TwilioVoice] WSTransport Received: hangup {error: {code: 31404, message: "Not Found"}}
+[Client] ===== CALL ERROR EVENT =====
+[Client] Error code: 31005
+[Client] Error message: ConnectionError (31005): Error sent from gateway in HANGUP
+[Client] originalError: {code: 31404, message: "Not Found"}
+```
+
+`enableImprovedSignalingErrorPrecision: false`の場合、元のエラーコード(31404)は`originalError`に含まれ、表面上は汎用的な31005エラーになる。
+
+`<Reject>`は着信コール（incoming call）を応答前に拒否するためのTwiML。発信コール（outgoing call）で使用すると、Twilioサーバー側でエラーとして処理される。
 
 ### `<Say><Hangup>`を返した場合
 
