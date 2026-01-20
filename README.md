@@ -15,11 +15,24 @@ Twilio Voice SDKの`device.connect()`でTwiML App webhookが`<Reject>`を返し�
 
 ### 1. 環境変数の設定
 
-```bash
-cp .env.example .env
-```
+`.env`ファイルを作成して、Twilioの認証情報を設定する。
 
-`.env`ファイルを編集して、Twilioの認証情報を設定する。
+```bash
+# Twilio Account SID
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Twilio Auth Token
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# TwiML App SID
+TWILIO_TWIML_APP_SID=APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# API Key SID (Voice SDKのトークン生成に必要)
+API_KEY_SID=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# API Key Secret
+API_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
 
 ### 2. TwiML Appの作成
 
