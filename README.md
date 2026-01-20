@@ -93,73 +93,57 @@ https://<cloudflared-url>/voice
 
 ### `<Reject>`を返した場合
 
-`<Reject>`をTwiML App webhookから返した場合、**errorイベントは発火しない**。
+`<Reject>`をTwiML App webhookから返した場合、**31404 errorイベントが発火する**。
 
-| 設定 | 期待 | 実際 |
-|------|------|------|
-| `enableImprovedSignalingErrorPrecision: true` | 31002 (ConnectionDeclinedError) | errorイベントなし、disconnectイベント発火 |
-| `enableImprovedSignalingErrorPrecision: false` | 31005 (ConnectionError) | errorイベントなし、disconnectイベント発火 |
-
-### 理由
-
-`device.connect()`による発信コールでは、以下の順序で処理される:
-
-1. WebRTC接続が確立される
-2. Twilioメディアサーバーとの接続が確立される（`accept`イベント発火）
-3. TwiML App webhookが呼ばれる
-4. `<Reject>`が返される → 切断として処理される（`disconnect`イベント発火）
-
-`<Reject>`は着信コール（incoming call）を応答前に拒否するためのTwiML。発信コール（outgoing call）では既にメディア接続が確立された後にTwiMLが処理されるため、「拒否」ではなく「切断」として扱われる。
-
-### 時系列ログ
-
-クライアントとバックエンドのログを時系列で整理。
+| 設定 | 実際 |
+|------|------|
+| `enableImprovedSignalingErrorPrecision: true` | 31404 (NotFound) errorイベント発火 |
 
 ```
-[Client] Starting application...
-[Client] Initializing device (enableImprovedSignalingErrorPrecision: true)
-[Client] Token received for identity: test-user-xxx
-[Client] Device registered
 [Client] Connecting...
-[Client] [TwilioVoice] .connect {}
-[Client] [TwilioVoice] WSTransport Sending: invite (SDP offer)
 [Client] [TwilioVoice] WSTransport Received: ringing {callsid: "CAxxxxxxxx"}
 [Server] [Voice Webhook] Received request: {from: "client:test-user-xxx", callSid: "CAxxxxxxxx"}
 [Server] [Voice Webhook] Returning TwiML: <Response><Reject reason="rejected"/></Response>
-[Client] [TwilioVoice] WSTransport Received: answer (SDP answer)
-[Client] [TwilioVoice] ICE connection state: checking → connected
-[Client] [TwilioVoice] DTLS transport state: new → connecting → connected
-[Client] [TwilioVoice] PeerConnection state: connecting → connected
-[Client] [TwilioVoice] Media connection established
-[Client] Call accepted                    ← acceptイベント発火
-[Client] Call disconnected                ← disconnectイベント発火（errorイベントは発火しない）
+[Client] [TwilioVoice] WSTransport Received: hangup {error: {code: 31404, message: "Not Found"}}
+[Client] ===== CALL ERROR EVENT =====
+[Client] Error code: 31404
+[Client] Error message: NotFound (31404): Not Found
 ```
 
-ポイント:
-- `ringing` → `answer` → メディア接続確立 → `accept`イベントの順で処理
-- TwiML webhookは`ringing`の後に呼ばれるが、`<Reject>`の結果はメディア接続確立後に反映される
-- `<Reject>`は`error`ではなく`disconnect`として処理される
+`<Reject>`は着信コール（incoming call）を応答前に拒否するためのTwiML。発信コール（outgoing call）で使用すると、Twilioサーバー側でエラーとして処理され、31404エラーが返される。
 
-### HTTP 500エラーを返した場合
+### `<Say><Hangup>`を返した場合
 
-webhookでHTTP 500エラーを返した場合も、**errorイベントは発火しない**。
+`<Say><Hangup>`をTwiML App webhookから返した場合、**errorイベントは発火しない**。
 
 ```bash
-WEBHOOK_MODE=http-error npm run dev
+WEBHOOK_MODE=say-hangup npm run dev
 ```
 
 | 設定 | 実際 |
 |------|------|
-| `enableImprovedSignalingErrorPrecision: true` | errorイベントなし、acceptイベント発火 |
+| `enableImprovedSignalingErrorPrecision: true` | errorイベントなし、acceptイベント発火後にdisconnectイベント発火 |
 
-webhookがHTTPエラーを返しても、Twilioメディアサーバーとの接続は確立される。webhookの結果はメディア接続の確立に影響しない。
+```
+[Client] Connecting...
+[Client] [TwilioVoice] WSTransport Received: ringing {callsid: "CAxxxxxxxx"}
+[Server] [Voice Webhook] Received request: {from: "client:test-user-xxx", callSid: "CAxxxxxxxx"}
+[Server] [Voice Webhook] Mode: say-hangup
+[Server] [Voice Webhook] Returning TwiML: <Response><Say>This call will be terminated.</Say><Hangup/></Response>
+[Client] [TwilioVoice] WSTransport Received: answer (SDP answer)
+[Client] [TwilioVoice] ICE connection state: checking → connected
+[Client] [TwilioVoice] PeerConnection state: connecting → connected
+[Client] Call accepted                    ← acceptイベント発火、音声再生
+[Client] Call disconnected                ← disconnectイベント発火（errorイベントは発火しない）
+```
+
+発信コールで正常に切断する場合は、`<Say><Hangup>`のような有効なTwiMLを使用する。
 
 ### 結論
 
-`device.connect()`による発信コールでは、以下の理由でerrorイベントを発火させることが難しい:
+`device.connect()`による発信コールでは:
 
-1. メディア接続はwebhookの処理結果に依存せず確立される
-2. `<Reject>`は着信コール用のTwiMLであり、発信コールでは切断として扱われる
-3. webhookのHTTPエラーもメディア接続には影響しない
+1. `<Reject>`を返す → **31404 errorイベントが発火する**
+2. `<Say><Hangup>`を返す → errorイベントは発火しない（正常にdisconnect）
 
-errorイベント（31002, 31005）を検証するには、別のシナリオ（無効なトークン、ネットワークエラーなど）が必要と考えられる。
+`<Reject>`は着信コール用のTwiMLであり、発信コールでは使用できない。発信コールを終了する場合は`<Hangup>`を使用する。

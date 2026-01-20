@@ -64,7 +64,7 @@ app.get("/token", (_req, res) => {
 });
 
 // TwiML App webhook
-// MODE: "reject" | "http-error" | "invalid-twiml"
+// MODE: "reject" | "http-error" | "invalid-twiml" | "say-hangup"
 const WEBHOOK_MODE = process.env.WEBHOOK_MODE || "reject";
 
 app.post("/voice", (req, res) => {
@@ -85,6 +85,18 @@ app.post("/voice", (req, res) => {
     console.log("[Voice Webhook] Returning invalid TwiML");
     res.type("text/xml");
     res.send("<Invalid>Not valid TwiML</Invalid>");
+    return;
+  }
+
+  if (WEBHOOK_MODE === "say-hangup") {
+    console.log("[Voice Webhook] Returning Say + Hangup TwiML");
+    const VoiceResponse = twilio.twiml.VoiceResponse;
+    const response = new VoiceResponse();
+    response.say("This call will be terminated.");
+    response.hangup();
+    console.log("[Voice Webhook] Returning TwiML:", response.toString());
+    res.type("text/xml");
+    res.send(response.toString());
     return;
   }
 
